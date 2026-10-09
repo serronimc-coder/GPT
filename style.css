@@ -30,3 +30,12 @@ canvas { max-width: 100%; height: auto; display: block; border-radius: 6px; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--muted); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
 .chip.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+h2 { margin: 0; font-size: 1.05rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.cell { background: var(--panel); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cell canvas { width: 100%; }
+.cell .cap { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .85rem; }
+.cell .actions { display: flex; gap: 6px; }
+.mini { flex: 1; padding: 10px 8px; border: 0; border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; }
+.mini.save { background: var(--accent); color: var(--accent-text); flex: 2; }
+.badge { color: var(--warn); font-weight: 600; }

@@ -292,20 +292,65 @@
     return pts;
   }
 
-  // Transforme un masque candidat en { corners, score }.
-  function candidateFromMask(mask, w, h) {
-    const { mask: comp, size } = largestComponent(mask, w, h);
-    if (size < w * h * 0.06) return null;
+  // Transforme une composante connexe en { corners, score, area } (ou null).
+  function candidateFromComponent(comp, size, w, h) {
+    if (size < w * h * 0.03) return null;
     const hull = convexHull(boundaryPoints(comp, w, h));
     const quad = bestQuad(hull);
     if (!quad) return null;
     const quadArea = polyArea(quad);
     const frac = quadArea / (w * h);
-    if (frac < 0.06 || frac > 0.985) return null;
+    if (frac < 0.03 || frac > 0.985) return null;
     const solidity = Math.min(1, size / quadArea); // 1 = la forme remplit bien son quadrilatère
     // plus la carte est grande dans l'image, mieux c'est, mais surtout il faut qu'elle soit « carrée »
     const score = solidity * (0.6 + 0.4 * Math.min(1, frac / 0.4));
-    return { corners: orderCorners(quad), score, solidity };
+    return { corners: orderCorners(quad), score, solidity, area: quadArea, frac };
+  }
+
+  function candidateFromMask(mask, w, h) {
+    const { mask: comp, size } = largestComponent(mask, w, h);
+    const c = candidateFromComponent(comp, size, w, h);
+    return c && c.frac >= 0.06 ? c : null;
+  }
+
+  // Toutes les composantes connexes assez grandes (au plus `limit`), les plus grandes d'abord.
+  function allComponents(mask, w, h, minSize, limit) {
+    const label = new Int32Array(w * h);
+    const sizes = [];
+    const stack = [];
+    for (let s = 0; s < mask.length; s++) {
+      if (!mask[s] || label[s]) continue;
+      const id = sizes.length + 1;
+      let size = 0;
+      label[s] = id;
+      stack.push(s);
+      while (stack.length) {
+        const i = stack.pop();
+        size++;
+        const x = i % w, y = (i / w) | 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            const j = yy * w + xx;
+            if (mask[j] && !label[j]) { label[j] = id; stack.push(j); }
+          }
+        }
+      }
+      sizes.push(size);
+    }
+    return sizes
+      .map((size, k) => ({ id: k + 1, size }))
+      .filter((c) => c.size >= minSize)
+      .sort((a, b) => b.size - a.size)
+      .slice(0, limit)
+      .map((c) => {
+        const m = new Uint8Array(w * h);
+        for (let i = 0; i < m.length; i++) if (label[i] === c.id) m[i] = 1;
+        return { mask: m, size: c.size };
+      });
   }
 
   // Stratégie 1 : contours (Sobel) fermés puis remplis.
@@ -375,6 +420,52 @@
         { x: img.width - mx, y: img.height - my }, { x: mx, y: img.height - my },
       ],
     };
+  }
+
+  function pointInQuad(p, q) {
+    let inside = false;
+    for (let i = 0, j = 3; i < 4; j = i++) {
+      if ((q[i].y > p.y) !== (q[j].y > p.y) &&
+          p.x < ((q[j].x - q[i].x) * (p.y - q[i].y)) / (q[j].y - q[i].y) + q[i].x) inside = !inside;
+    }
+    return inside;
+  }
+  const centroid = (q) => ({ x: q.reduce((s, p) => s + p.x, 0) / 4, y: q.reduce((s, p) => s + p.y, 0) / 4 });
+
+  /**
+   * Détecte plusieurs cartes dans une même photo (elles ne doivent pas se toucher).
+   * @returns {{corners: {x,y}[][], detected: boolean}} un quadrilatère TL,TR,BR,BL par carte,
+   *          triés de haut en bas puis de gauche à droite.
+   */
+  function detectCards(img) {
+    const { img: small, scale } = resize(img, 480);
+    const w = small.width, h = small.height;
+    const g = toGray(small);
+    let cands = [];
+    for (const mask of [maskFromEdges(g, w, h), maskFromThreshold(g, w, h)]) {
+      for (const { mask: comp, size } of allComponents(mask, w, h, w * h * 0.03, 12)) {
+        const c = candidateFromComponent(comp, size, w, h);
+        if (c && c.solidity > 0.8) cands.push(c);
+      }
+    }
+    cands.sort((a, b) => b.score - a.score);
+    const kept = [];
+    for (const c of cands) {
+      const cc = centroid(c.corners);
+      if (!kept.some((k) => pointInQuad(cc, k.corners) || pointInQuad(centroid(k.corners), c.corners))) kept.push(c);
+    }
+    const biggest = Math.max(0, ...kept.map((c) => c.area));
+    const cards = kept.filter((c) => c.area >= biggest * 0.25);
+    if (!cards.length) {
+      const d = detectCard(img);
+      return { detected: false, corners: [d.corners] };
+    }
+    const rowH = Math.sqrt(biggest) * 0.6;
+    cards.sort((a, b) => {
+      const ca = centroid(a.corners), cb = centroid(b.corners);
+      return Math.abs(ca.y - cb.y) > rowH ? ca.y - cb.y : ca.x - cb.x;
+    });
+    return { detected: true, corners: cards.map((c) => c.corners.map((p) => ({ x: p.x / scale, y: p.y / scale }))) };
   }
 
   /* ---------- redressement de perspective ---------- */
@@ -602,5 +693,5 @@
     return sum2 / n - mean * mean;
   }
 
-  return { detectCard, warpCard, enhance, sharpness, rotate90, orderCorners, homography, resize };
+  return { detectCard, detectCards, pointInQuad, warpCard, enhance, sharpness, rotate90, orderCorners, homography, resize };
 });

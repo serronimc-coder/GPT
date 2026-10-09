@@ -19,41 +19,43 @@
     <section id="screen-home" class="screen active">
       <div class="hero">
         <svg viewBox="0 0 64 40" aria-hidden="true"><rect x="2" y="2" width="60" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="currentColor"/><rect x="28" y="12" width="26" height="3" rx="1.5" fill="currentColor"/><rect x="28" y="19" width="18" height="3" rx="1.5" fill="currentColor"/><rect x="10" y="29" width="36" height="2" rx="1" fill="currentColor"/></svg>
-        <p>Photographiez une carte de visite sur un fond uni et bien éclairé. Les bords sont détectés, la perspective corrigée et l'image nettoyée automatiquement.</p>
+        <p>Photographiez une ou plusieurs cartes de visite sur un fond uni et bien éclairé, sans qu'elles se touchent. Chaque carte est détectée, redressée et nettoyée.</p>
       </div>
       <label class="btn primary" for="file-camera">📷 Prendre une photo</label>
       <input id="file-camera" type="file" accept="image/*" capture="environment" hidden>
-      <label class="btn" for="file-gallery">🖼️ Importer depuis la galerie</label>
-      <input id="file-gallery" type="file" accept="image/*" hidden>
+      <label class="btn" for="file-gallery">🖼️ Importer une ou plusieurs photos</label>
+      <input id="file-gallery" type="file" accept="image/*" multiple hidden>
     </section>
 
     <!-- Étape 2 : ajustement des coins -->
     <section id="screen-crop" class="screen">
+      <p id="crop-title" class="hint"></p>
       <p id="crop-hint" class="hint"></p>
       <div class="stage"><canvas id="crop-canvas"></canvas></div>
       <div class="row">
-        <button class="btn" id="crop-cancel">Annuler</button>
+        <button class="btn" id="card-add">＋ Carte</button>
+        <button class="btn" id="card-del">Retirer cette carte</button>
         <button class="btn" id="crop-auto">Détection auto</button>
+      </div>
+      <div class="row">
+        <button class="btn" id="crop-cancel">Ignorer la photo</button>
         <button class="btn primary" id="crop-ok">Valider</button>
       </div>
     </section>
 
-    <!-- Étape 3 : résultat -->
+    <!-- Étape 3 : résultats -->
     <section id="screen-result" class="screen">
-      <p id="quality-warn" class="warn" hidden></p>
-      <div class="stage"><canvas id="result-canvas"></canvas></div>
+      <h2 id="result-title">Cartes scannées</h2>
       <div class="chips" role="radiogroup" aria-label="Mode d'amélioration">
         <button class="chip active" data-mode="color" role="radio" aria-checked="true">Couleur</button>
         <button class="chip" data-mode="document" role="radio" aria-checked="false">Document N&amp;B</button>
         <button class="chip" data-mode="gray" role="radio" aria-checked="false">Gris</button>
         <button class="chip" data-mode="original" role="radio" aria-checked="false">Brut</button>
       </div>
-      <div class="row">
-        <button class="btn" id="rotate">⟳ Pivoter</button>
-        <button class="btn" id="back-crop">✂️ Recadrer</button>
-      </div>
-      <button class="btn primary" id="save">💾 Enregistrer dans Photos</button>
-      <button class="btn" id="download">⬇️ Télécharger le fichier</button>
+      <div id="grid" class="grid"></div>
+      <button class="btn primary" id="save-all">💾 Tout enregistrer dans Photos</button>
+      <label class="btn" for="file-more">＋ Ajouter d'autres photos</label>
+      <input id="file-more" type="file" accept="image/*" multiple hidden>
       <button class="btn" id="again">Nouveau scan</button>
       <p id="status" class="status" role="status"></p>
     </section>

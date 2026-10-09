@@ -104,6 +104,40 @@ const sNet = S.sharpness(sharp), sFlou = S.sharpness(blurred);
 console.log(`netteté nette=${sNet.toFixed(0)} floue=${sFlou.toFixed(0)}`);
 assert(sFlou < sNet * 0.6, 'la mesure de netteté ne distingue pas le flou');
 
+
+// Plusieurs cartes dans une même photo.
+{
+  const W = 1000, H = 800;
+  const quads = [
+    [{ x: 60, y: 60 }, { x: 460, y: 80 }, { x: 450, y: 300 }, { x: 70, y: 290 }],
+    [{ x: 540, y: 70 }, { x: 940, y: 60 }, { x: 930, y: 290 }, { x: 550, y: 300 }],
+    [{ x: 120, y: 420 }, { x: 520, y: 440 }, { x: 500, y: 700 }, { x: 100, y: 670 }],
+    [{ x: 600, y: 440 }, { x: 930, y: 470 }, { x: 900, y: 720 }, { x: 590, y: 700 }],
+  ];
+  const scene = { width: W, height: H, data: new Uint8ClampedArray(W * H * 4) };
+  const hms = quads.map((q) => S.homography(q, [{ x: 0, y: 0 }, { x: CW, y: 0 }, { x: CW, y: CH }, { x: 0, y: CH }]));
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let v = [55, 55, 55];
+    for (const hm of hms) {
+      const d = hm[6] * x + hm[7] * y + 1;
+      const u = (hm[0] * x + hm[1] * y + hm[2]) / d, w = (hm[3] * x + hm[4] * y + hm[5]) / d;
+      if (u >= 0 && u < CW - 1 && w >= 0 && w < CH - 1) { const i = (Math.floor(w) * CW + Math.floor(u)) * 4; v = [card.data[i], card.data[i + 1], card.data[i + 2]]; }
+    }
+    scene.data.set([...v, 255], (y * W + x) * 4);
+  }
+  const res = S.detectCards(scene);
+  console.log(`plusieurs cartes: ${res.corners.length} détectées`);
+  assert.strictEqual(res.detected, true);
+  assert.strictEqual(res.corners.length, 4);
+  // ordre : lignes de haut en bas, gauche à droite ; chaque coin proche de la vérité
+  res.corners.forEach((c, i) => {
+    const err = cornerErr(c, S.orderCorners(quads[i]));
+    assert(err < 14, `carte ${i}: erreur ${err.toFixed(1)}px`);
+  });
+  // une seule carte → une seule détection
+  assert.strictEqual(S.detectCards(render(card, cases[0].quad, 900, 700, cases[0].bg)).corners.length, 1);
+}
+
 // Rotation 90°
 const r = S.rotate90({ width: 2, height: 1, data: new Uint8ClampedArray([1, 1, 1, 255, 2, 2, 2, 255]) }, 1);
 assert.strictEqual(r.width, 1); assert.strictEqual(r.height, 2); assert.strictEqual(r.data[0], 1); assert.strictEqual(r.data[4], 2);
