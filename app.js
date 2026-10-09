@@ -13,11 +13,15 @@
     sel: 0,            // carte sélectionnée dans l'écran de recadrage
     results: [],       // cartes scannées : { warped, rotation, blurry, enhanced }
     mode: 'color',
+    screen: 'home',
+    cropping: false,   // une photo attend son recadrage
   };
 
   /* ---------- navigation ---------- */
   function show(name) {
     document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + name));
+    state.screen = name;
+    selectTab(name === 'result' ? tabCards : tabScan);
     window.scrollTo(0, 0);
   }
   function setStatus(msg) { $('status').textContent = msg || ''; }
@@ -53,6 +57,7 @@
 
   // Passe à la photo suivante de la file ; affiche les résultats quand elle est vide.
   async function nextPhoto() {
+    state.cropping = false;
     if (state.qi >= state.queue.length) {
       if (state.results.length) { renderGrid(); show('result'); } else show('home');
       return;
@@ -65,6 +70,7 @@
       return nextPhoto();
     }
     runDetection();
+    state.cropping = true;
     show('crop');
   }
 
@@ -226,6 +232,16 @@
   function renderGrid() {
     const grid = $('grid');
     grid.textContent = '';
+    updateCount();
+    if (!state.results.length) {
+      const p = document.createElement('p');
+      p.className = 'empty'; p.textContent = 'Aucune carte scannée pour l\'instant.';
+      grid.appendChild(p);
+      $('result-title').textContent = 'Cartes scannées';
+      $('save-all').hidden = true;
+      return;
+    }
+    $('save-all').hidden = false;
     state.results.forEach((r, i) => {
       if (!r.enhanced) enhanceCard(r);
       const cell = document.createElement('div');
@@ -323,6 +339,47 @@
     }
     $('save-all').disabled = false;
   }
+
+  /* ---------- navbar en verre ---------- */
+  const root = document.documentElement;
+  const tabScan = $('tab-scan'), tabCards = $('tab-cards'), lozenge = $('lozenge');
+  const tabs = [tabScan, tabCards];
+
+  function moveLozenge(animate) {
+    const tab = document.querySelector('.tab[aria-current="page"]');
+    if (!tab) return;
+    if (!animate) lozenge.style.transition = 'none';
+    lozenge.style.left = tab.offsetLeft + 'px';
+    lozenge.style.width = tab.offsetWidth + 'px';
+    if (!animate) { void lozenge.offsetWidth; lozenge.style.transition = ''; }
+  }
+  function selectTab(tab) {
+    tabs.forEach((t) => (t === tab ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current')));
+    requestAnimationFrame(() => moveLozenge(true));
+  }
+  function updateCount() {
+    const n = state.results.length;
+    $('count').textContent = String(n);
+    $('count').hidden = n === 0;
+    requestAnimationFrame(() => moveLozenge(false));
+  }
+  tabScan.addEventListener('click', () => { if (state.cropping) { show('crop'); drawCrop(); } else show('home'); });
+  tabCards.addEventListener('click', () => { renderGrid(); show('result'); });
+  window.addEventListener('resize', () => moveLozenge(false));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => moveLozenge(false));
+
+  function isDark() {
+    const t = root.getAttribute('data-theme');
+    return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  function paintMode() {
+    const d = isDark();
+    $('sun').hidden = d; $('moon').hidden = !d;
+    $('mode').setAttribute('aria-label', d ? 'Passer en mode clair' : 'Passer en mode sombre');
+  }
+  $('mode').addEventListener('click', () => { root.setAttribute('data-theme', isDark() ? 'light' : 'dark'); paintMode(); });
+  paintMode();
+  moveLozenge(false);
 
   /* ---------- événements ---------- */
   // Les photos ajoutées s'ajoutent aux cartes déjà scannées.
