@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Liquid Navbar</title>
+<style>
+  /* Layout: one dark pill bar centred on a black stage; a mint blob stretches like liquid toward the tapped icon */
+  :root {
+    color-scheme: dark;
+    --bg: #04060a;
+    --bar: #0d1117;
+    --bar-edge: rgba(255, 255, 255, .09);
+    --icon: #9aa4b2;
+    --icon-on: #ffffff;
+    --mint: #6ee7c4;
+    --muted: #6b7686;
+    --fg: #e8edf3;
+    --gold: #d9a441;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding-inline: 16px;
+    padding-block: 32px;
+    min-height: 100vh;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 36px;
+    background: radial-gradient(70% 50% at 50% 40%, #0b1220, var(--bg));
+    color: var(--fg);
+    font-family: var(--font);
+  }
+  .title { margin: 0; text-align: center; font-size: clamp(1.8rem, 7vw, 3rem); font-weight: 600; letter-spacing: -.01em; }
+  .title span { display: block; margin-top: 6px; font-size: .9rem; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+
+  .nav {
+    position: relative;
+    width: min(100%, 470px);
+    height: 78px;
+    padding-inline: 10px;
+    border-radius: 39px;
+    background: var(--bar);
+    border: 1px solid var(--bar-edge);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 20px 50px rgba(0, 0, 0, .6);
+  }
+  .goo { position: absolute; inset: 0; filter: url(#goo); pointer-events: none; }
+  .blob {
+    position: absolute;
+    top: 13px; left: 0;
+    height: 50px; width: 50px;
+    border-radius: 25px;
+    background: var(--mint);
+    box-shadow: 0 0 30px rgba(110, 231, 196, .5);
+  }
+  .items { position: relative; height: 100%; display: grid; grid-template-columns: repeat(5, 1fr); list-style: none; margin: 0; padding: 0; }
+  .items li { display: grid; place-items: center; }
+  .items button {
+    width: 56px; height: 56px;
+    display: grid; place-items: center;
+    border: 0; border-radius: 50%;
+    background: none; color: var(--icon); cursor: pointer;
+    transition: color .25s, transform .25s;
+  }
+  .items button:hover { color: var(--icon-on); }
+  .items button[aria-current="page"] { color: #06231b; transform: translateY(-1px); }
+  .items button:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .page { text-align: center; min-height: 3.2em; }
+  .page strong { display: block; font-size: 1.2rem; font-weight: 600; }
+  .page span { color: var(--muted); font-size: .95rem; }
+
+  @media (prefers-reduced-motion: reduce) { .blob { transition: none !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="goo" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="b"/>
+      <feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -9" result="g"/>
+      <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+    </filter>
+  </defs>
+</svg>
+
+<h1 class="title">Liquid Navbar<span>Tap an icon</span></h1>
+
+<nav class="nav" id="nav" aria-label="Main">
+  <div class="goo" aria-hidden="true"><div class="blob" id="lead"></div><div class="blob" id="tail"></div></div>
+  <ul class="items">
+    <li><button type="button" aria-label="Home" data-t="Home" data-d="Your feed, caught up."><svg class="i" viewBox="0 0 24 24"><path d="M3.5 10.5 12 3l8.5 7.5V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg></button></li>
+    <li><button type="button" aria-label="Search" data-t="Search" data-d="Find people, posts and places."><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></button></li>
+    <li><button type="button" aria-label="Create" data-t="Create" data-d="Start something new."><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M12 8v8M8 12h8"/></svg></button></li>
+    <li><button type="button" aria-label="Messages" data-t="Messages" data-d="3 conversations waiting."><svg class="i" viewBox="0 0 24 24"><path d="M20.5 11.5a8 8 0 0 1-11.7 7L3.5 20l1.5-5A8 8 0 1 1 20.5 11.5z"/></svg></button></li>
+    <li><button type="button" aria-label="Profile" data-t="Profile" data-d="Your account and settings."><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></button></li>
+  </ul>
+</nav>
+
+<p class="page" id="page" aria-live="polite"><strong>Home</strong><span>Your feed, caught up.</span></p>
+
+<script>
+  var nav = document.getElementById('nav');
+  var btns = Array.prototype.slice.call(nav.querySelectorAll('.items button'));
+  var lead = document.getElementById('lead'), tail = document.getElementById('tail');
+  var cur = 0, SIZE = 50;
+
+  function centerOf(i) {
+    var n = nav.getBoundingClientRect(), b = btns[i].getBoundingClientRect();
+    return b.left - n.left + b.width / 2;
+  }
+  function place(el, cx, width, ms, delay) {
+    el.style.transition = 'left ' + ms + 'ms cubic-bezier(.5,0,.2,1) ' + delay + 'ms, width ' + ms + 'ms cubic-bezier(.5,0,.2,1) ' + delay + 'ms';
+    el.style.left = (cx - width / 2) + 'px';
+    el.style.width = width + 'px';
+  }
+  function snap(i) {
+    [lead, tail].forEach(function (el) { el.style.transition = 'none'; });
+    place(lead, centerOf(i), SIZE, 0, 0);
+    place(tail, centerOf(i), SIZE, 0, 0);
+  }
+  function go(i) {
+    if (i === cur) return;
+    var dist = Math.abs(centerOf(i) - centerOf(cur));
+    var fast = 280 + Math.min(dist, 300) * .25;
+    place(lead, centerOf(i), SIZE + Math.min(dist * .35, 40), fast, 0);   // head runs ahead, stretched
+    place(tail, centerOf(i), SIZE, fast + 220, 70);                       // tail follows and merges
+    setTimeout(function () { place(lead, centerOf(i), SIZE, 240, 0); }, fast);
+    btns.forEach(function (b, k) { k === i ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'); });
+    var t = btns[i].dataset;
+    document.getElementById('page').innerHTML = '<strong>' + t.t + '</strong><span>' + t.d + '</span>';
+    cur = i;
+  }
+  btns.forEach(function (b, i) { b.addEventListener('click', function () { go(i); }); });
+  nav.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') { go(Math.min(cur + 1, 4)); btns[cur].focus(); }
+    if (e.key === 'ArrowLeft') { go(Math.max(cur - 1, 0)); btns[cur].focus(); }
+  });
+  btns[0].setAttribute('aria-current', 'page');
+  snap(0);
+  window.addEventListener('resize', function () { snap(cur); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { snap(cur); });
+</script>
+
+</body>
+</html>

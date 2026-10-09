@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neumorphic Login</title>
+<style>
+  :root {
+    --bg: #e0e5ec;
+    --shadow-dark: #a3b1c6;
+    --shadow-light: #ffffff;
+    --text: #3d4468;
+    --accent: #4a86d8;
+    --ok: #3fb68b;
+    --err: #d9534f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+  }
+  .login-circle {
+    position: relative;
+    width: min(92vw, 480px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--bg);
+    box-shadow: 20px 20px 50px var(--shadow-dark), -20px -20px 50px var(--shadow-light);
+    display: grid;
+    place-items: center;
+  }
+  .form-content, .success-msg {
+    width: 62%;
+    text-align: center;
+    transition: opacity .4s ease, transform .4s ease;
+  }
+  h2 { margin: 0 0 8px; font-size: clamp(1.4rem, 6vw, 2rem); letter-spacing: 1px; }
+  .hint { min-height: 1.2em; margin: 0 0 12px; font-size: .85rem; color: var(--err); }
+  .input-group { margin-bottom: 18px; }
+  input {
+    width: 100%;
+    padding: 14px 20px;
+    border: 0;
+    outline: 0;
+    border-radius: 30px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+    box-shadow: inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light);
+  }
+  input:focus { box-shadow: inset 8px 8px 14px var(--shadow-dark), inset -8px -8px 14px var(--shadow-light); }
+  .btn-submit {
+    width: 100%;
+    padding: 14px;
+    border: 0;
+    border-radius: 30px;
+    background: var(--bg);
+    color: var(--accent);
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+    transition: box-shadow .15s ease;
+  }
+  .btn-submit:active {
+    box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+  }
+  .success-msg {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    height: fit-content;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(.9);
+  }
+  .check-circle {
+    width: 80px; height: 80px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 2.4rem;
+    color: var(--ok);
+    box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+  }
+  .login-circle.success .form-content { opacity: 0; transform: scale(.9); pointer-events: none; }
+  .login-circle.success .success-msg { opacity: 1; transform: scale(1); }
+</style>
+</head>
+<body>
+  <div class="login-circle" id="loginContainer">
+    <div class="success-msg" id="successMsg">
+      <div class="check-circle">✓</div>
+      <h2>Welcome Back!</h2>
+      <p>Login Successful</p>
+    </div>
+    <form class="form-content" id="formContent" onsubmit="event.preventDefault(); handleLogin();">
+      <h2>SIGN IN</h2>
+      <p class="hint" id="hint"></p>
+      <div class="input-group">
+        <input type="text" id="username" placeholder="Username" autocomplete="username" required>
+      </div>
+      <div class="input-group">
+        <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+      </div>
+      <button class="btn-submit" type="submit">Login</button>
+    </form>
+  </div>
+
+<script>
+  // Demo only: front-end check, not real authentication.
+  function handleLogin() {
+    const user = document.getElementById('username').value.trim();
+    const pass = document.getElementById('password').value;
+    const hint = document.getElementById('hint');
+    if (user && pass.length >= 4) {
+      hint.textContent = '';
+      document.getElementById('loginContainer').classList.add('success');
+    } else {
+      hint.textContent = 'Enter a username and a password of 4+ characters';
+    }
+  }
+</script>
+</body>
+</html>

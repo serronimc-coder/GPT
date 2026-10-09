@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Flow Login</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+  /* Layout: one centred glass card under a glowing orb, on a deep navy field (single dark look by design) */
+  :root {
+    color-scheme: dark;
+    --bg: #050b14;
+    --card: rgba(18, 30, 44, .72);
+    --card-edge: rgba(56, 189, 248, .28);
+    --field: rgba(255, 255, 255, .035);
+    --field-edge: rgba(255, 255, 255, .09);
+    --fg: #e6eef7;
+    --muted: #7f93a8;
+    --teal: #2dd4bf;
+    --blue: #3b82f6;
+    --blue-deep: #1d4ed8;
+    --err: #fb7185;
+    --font: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding-inline: 16px;
+    padding-block: 40px;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(60% 45% at 50% 0%, rgba(56, 189, 248, .16), transparent 70%),
+      radial-gradient(50% 40% at 50% 100%, rgba(29, 78, 216, .14), transparent 70%),
+      var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+  }
+  .stage { position: relative; width: min(100%, 400px); }
+  .orb {
+    position: absolute;
+    left: 50%; top: -34px;
+    width: 72px; height: 72px;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #7dd3fc, #2563eb 55%, #1e3a8a);
+    box-shadow: 0 0 60px 8px rgba(59, 130, 246, .55);
+    animation: float 5s ease-in-out infinite;
+  }
+  @keyframes float { 50% { translate: -50% 8px; } }
+  .card {
+    position: relative;
+    padding: 56px 28px 28px;
+    border-radius: 28px;
+    background: var(--card);
+    border: 1px solid var(--card-edge);
+    box-shadow: 0 0 50px rgba(56, 189, 248, .12), inset 0 1px 0 rgba(255, 255, 255, .06);
+    backdrop-filter: blur(14px);
+    overflow: hidden;
+  }
+  h1 {
+    margin: 0;
+    text-align: center;
+    font-size: 2.6rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    background: linear-gradient(90deg, var(--teal), var(--blue));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .sub { margin: 6px 0 28px; text-align: center; color: var(--muted); font-size: .98rem; }
+  form, .done { transition: opacity .35s ease, transform .35s ease; }
+  .field { position: relative; margin-bottom: 14px; }
+  input[type="email"], input[type="password"], input[type="text"] {
+    width: 100%;
+    padding: 16px 48px 16px 18px;
+    border-radius: 16px;
+    border: 1px solid var(--field-edge);
+    background: var(--field);
+    color: var(--fg);
+    font: inherit;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  input::placeholder { color: var(--muted); }
+  input:focus-visible { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(45, 212, 191, .18); }
+  .field.bad input { border-color: var(--err); }
+  .eye {
+    position: absolute; right: 8px; top: 50%;
+    translate: 0 -50%;
+    width: 38px; height: 38px;
+    display: grid; place-items: center;
+    border: 0; border-radius: 10px;
+    background: none; color: var(--muted); cursor: pointer;
+  }
+  .eye:hover { color: var(--fg); }
+  .eye:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .error { min-height: 1.3em; margin: 0 0 8px; color: var(--err); font-size: .85rem; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: .92rem; }
+  .check { display: flex; gap: 10px; align-items: center; color: var(--muted); cursor: pointer; }
+  .check input { appearance: none; margin: 0; width: 20px; height: 20px; border-radius: 6px; border: 1px solid var(--field-edge); background: var(--field); display: grid; place-items: center; cursor: pointer; }
+  .check input:checked { background: var(--blue); border-color: var(--blue); }
+  .check input:checked::after { content: ""; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; rotate: 45deg; translate: 0 -1px; }
+  a { color: var(--fg); text-decoration: none; }
+  a:hover { color: var(--teal); }
+  .primary {
+    width: 100%; height: 56px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    border: 0; border-radius: 28px;
+    background: linear-gradient(180deg, #38bdf8, var(--blue) 45%, var(--blue-deep));
+    color: #fff; font: inherit; font-size: 1.05rem; font-weight: 700;
+    box-shadow: 0 10px 30px rgba(37, 99, 235, .45);
+    cursor: pointer;
+    transition: transform .15s, filter .15s;
+  }
+  .primary:hover { filter: brightness(1.08); }
+  .primary:active { transform: scale(.985); }
+  .primary[disabled] { cursor: progress; filter: saturate(.8); }
+  .spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: rot .7s linear infinite; }
+  @keyframes rot { to { rotate: 360deg; } }
+  .divider { display: flex; align-items: center; gap: 12px; margin: 22px 0 16px; color: #566a80; font-size: .85rem; }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: rgba(255, 255, 255, .08); }
+  .social { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .social button {
+    height: 52px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    border-radius: 14px;
+    border: 1px solid var(--field-edge);
+    background: rgba(255, 255, 255, .03);
+    color: var(--fg); font: inherit; font-weight: 600; cursor: pointer;
+    transition: background .2s, border-color .2s;
+  }
+  .social button:hover { background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .18); }
+  .foot { margin: 24px 0 0; text-align: center; color: var(--muted); font-size: .95rem; }
+  .foot a { color: var(--fg); font-weight: 600; }
+  .done {
+    position: absolute; inset: 0;
+    display: grid; place-content: center; justify-items: center; gap: 6px;
+    text-align: center; padding: 24px;
+    opacity: 0; transform: scale(.94); pointer-events: none;
+  }
+  .done .tick { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 10px; background: rgba(45, 212, 191, .12); border: 1px solid rgba(45, 212, 191, .5); color: var(--teal); box-shadow: 0 0 40px rgba(45, 212, 191, .25); }
+  .done h2 { margin: 0; font-size: 1.6rem; }
+  .done p { margin: 0; color: var(--muted); }
+  .done button { margin-top: 18px; padding: 10px 20px; border-radius: 12px; border: 1px solid var(--field-edge); background: var(--field); color: var(--fg); font: inherit; cursor: pointer; }
+  .card.ok > :not(.done) { opacity: 0; pointer-events: none; transform: scale(.96); }
+  .card.ok .done { opacity: 1; transform: none; pointer-events: auto; }
+  .card.ok .orb { opacity: 1; }
+  .shake { animation: shake .35s; }
+  @keyframes shake { 25% { translate: -6px 0; } 75% { translate: 6px 0; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<main class="stage">
+  <div class="orb" aria-hidden="true"></div>
+  <section class="card" id="card">
+    <h1>Flow</h1>
+    <p class="sub">Good to see you. Dive back in.</p>
+
+    <form id="form" novalidate>
+      <div class="field" id="emailField">
+        <input type="email" id="email" placeholder="Email" autocomplete="email" aria-label="Email">
+      </div>
+      <div class="field" id="passField">
+        <input type="password" id="password" placeholder="Password" autocomplete="current-password" aria-label="Password">
+        <button type="button" class="eye" id="eye" aria-label="Show password" aria-pressed="false">
+          <svg id="eyeIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <p class="error" id="error" role="alert"></p>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="remember"> Remember me</label>
+        <a href="#forgot" id="forgot">Forgot password?</a>
+      </div>
+      <button class="primary" id="submit" type="submit"><span id="label">Sign in</span></button>
+
+      <div class="divider">or continue with</div>
+      <div class="social">
+        <button type="button" data-p="Google">
+          <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+          Google
+        </button>
+        <button type="button" data-p="Apple">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+          Apple
+        </button>
+      </div>
+      <p class="foot">New here? <a href="#signup" id="create">Create account</a></p>
+    </form>
+
+    <div class="done" id="done" aria-live="polite">
+      <div class="tick"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h2>Welcome back</h2>
+      <p id="doneMsg">You're signed in.</p>
+      <button type="button" id="again">Sign out</button>
+    </div>
+  </section>
+</main>
+
+<script>
+  // Demo only: nothing is sent anywhere and no real account is checked.
+  var $ = function (id) { return document.getElementById(id); };
+  var card = $('card'), form = $('form'), err = $('error');
+
+  function fail(msg, field) {
+    err.textContent = msg;
+    document.querySelectorAll('.field').forEach(function (f) { f.classList.remove('bad'); });
+    if (field) field.classList.add('bad');
+    card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
+  }
+
+  $('eye').addEventListener('click', function () {
+    var show = $('password').type === 'password';
+    $('password').type = show ? 'text' : 'password';
+    this.setAttribute('aria-pressed', show);
+    this.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    $('eyeIcon').style.opacity = show ? .55 : 1;
+  });
+
+  function signIn(who) {
+    var btn = $('submit');
+    btn.disabled = true;
+    $('label').outerHTML = '<span class="spin" id="spin"></span>';
+    setTimeout(function () {
+      $('doneMsg').textContent = who ? 'Signed in with ' + who + '.' : "You're signed in as " + $('email').value + '.';
+      card.classList.add('ok');
+      btn.disabled = false;
+      $('spin').outerHTML = '<span id="label">Sign in</span>';
+    }, 1100);
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = $('email').value.trim(), pass = $('password').value;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('Enter a valid email address.', $('emailField'));
+    if (pass.length < 6) return fail('Your password needs at least 6 characters.', $('passField'));
+    fail('');
+    signIn();
+  });
+
+  document.querySelectorAll('.social button').forEach(function (b) {
+    b.addEventListener('click', function () { fail(''); signIn(b.dataset.p); });
+  });
+  $('forgot').addEventListener('click', function (e) { e.preventDefault(); fail('Password reset is not available in this demo.'); });
+  $('create').addEventListener('click', function (e) { e.preventDefault(); fail('Account creation is not available in this demo.'); });
+  $('again').addEventListener('click', function () { card.classList.remove('ok'); $('password').value = ''; });
+</script>
+
+</body>
+</html>

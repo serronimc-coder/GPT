@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Memory Vault Carousel</title>
+<style>
+  /* Layout: a ring of six cards turning around a vertical axis; the card facing you is the only one you can flip */
+  :root {
+    color-scheme: light;
+    --bg1: #f8fafc;
+    --bg2: #e0e7ff;
+    --fg: #171717;
+    --muted: #525c6b;
+    --card: #ffffff;
+    --card-edge: #e5e5e5;
+    --well: #f1f1f4;
+    --violet: #7c3aed;
+    --cyan: #0e7490;
+    --pink: #c026d3;
+    --dot: #d4d4d8;
+    --dot-hover: #a1a1aa;
+    --shadow: rgba(30, 27, 75, .22);
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg1: #0a0a0f; --bg2: #111a2e; --fg: #f4f4f5; --muted: #a1a1aa;
+      --card: #16161f; --card-edge: rgba(157, 100, 255, .3); --well: rgba(0, 0, 0, .4);
+      --violet: #a78bfa; --cyan: #67e8f9; --pink: #e879f9;
+      --dot: #3f3f46; --dot-hover: #71717a; --shadow: rgba(0, 0, 0, .7);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg1: #0a0a0f; --bg2: #111a2e; --fg: #f4f4f5; --muted: #a1a1aa;
+    --card: #16161f; --card-edge: rgba(157, 100, 255, .3); --well: rgba(0, 0, 0, .4);
+    --violet: #a78bfa; --cyan: #67e8f9; --pink: #e879f9;
+    --dot: #3f3f46; --dot-hover: #71717a; --shadow: rgba(0, 0, 0, .7);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    padding-inline: 16px;
+    padding-block: 32px;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, var(--bg1), var(--bg2));
+    color: var(--fg);
+    font-family: var(--font);
+    overflow-x: hidden;
+  }
+  h1 {
+    margin: 0 0 24px;
+    font-family: var(--mono);
+    font-size: clamp(1.4rem, 5vw, 2rem);
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    text-align: center;
+    background: linear-gradient(90deg, var(--violet), var(--cyan));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .stage {
+    position: relative;
+    width: 100%; max-width: 960px;
+    display: flex; align-items: center; justify-content: center;
+    perspective: 1200px;
+    touch-action: pan-y;
+    user-select: none; -webkit-user-select: none;
+    cursor: grab;
+  }
+  .stage.dragging { cursor: grabbing; }
+  .ring { position: relative; width: 1px; height: 1px; transform-style: preserve-3d; transition: transform .5s ease-out; }
+  .stage.dragging .ring { transition: none; }
+  .slot {
+    position: absolute; left: 50%; top: 50%;
+    transform-style: preserve-3d;
+    transition: opacity .3s, filter .3s;
+  }
+  .slot.off { opacity: .4; filter: blur(1.5px); pointer-events: none; }
+  .card {
+    position: relative; width: 100%; height: 100%;
+    border-radius: 16px;
+    transform-style: preserve-3d;
+    transition: transform .7s cubic-bezier(.175, .885, .32, 1.275);
+    outline: none;
+  }
+  .card.flip { transform: rotateY(180deg); }
+  .card:focus-visible { box-shadow: 0 0 0 2px var(--bg1), 0 0 0 4px var(--violet); }
+  .face {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    padding: 20px;
+    border-radius: 16px;
+    background: var(--card);
+    border: 1px solid var(--card-edge);
+    box-shadow: 0 20px 40px -10px var(--shadow);
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    overflow: hidden;
+  }
+  .back { transform: rotateY(180deg); }
+  .cat { margin: 0 0 8px; font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--pink); }
+  .face h2 { margin: 0 0 14px; font-size: 1.1rem; line-height: 1.25; }
+  .well { position: relative; height: 112px; margin-bottom: 14px; display: grid; place-items: center; font-size: 3rem; border-radius: 8px; background: var(--well); overflow: hidden; }
+  .well::after { content: ""; position: absolute; inset: 0; background: linear-gradient(45deg, transparent 65%, rgba(157, 0, 255, .2) 70%, transparent 75%); background-size: 200% 200%; animation: sheen 4s linear infinite; }
+  @keyframes sheen { to { background-position: 200% 200%; } }
+  .face p { margin: 0; font-size: .85rem; line-height: 1.55; color: var(--muted); }
+  .back p { flex: 1; overflow-y: auto; margin-bottom: 14px; }
+  .meta { margin: auto 0 0; display: grid; gap: 4px; font-family: var(--mono); font-size: 11px; }
+  .meta .loc { color: var(--cyan); } .meta .time { color: var(--pink); }
+
+  .controls { margin-top: 24px; display: flex; align-items: center; gap: 24px; }
+  .arrow {
+    width: 44px; height: 44px; display: grid; place-items: center;
+    border-radius: 50%; border: 1px solid color-mix(in srgb, var(--violet) 60%, transparent);
+    background: var(--card); color: var(--fg); cursor: pointer;
+    box-shadow: 0 4px 10px -4px var(--shadow);
+    transition: transform .2s, background .2s, color .2s;
+  }
+  .arrow:hover { transform: scale(1.1); background: var(--violet); color: var(--bg1); }
+  .arrow svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .dots { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; padding: 0; border: 0; border-radius: 50%; background: var(--dot); cursor: pointer; transition: transform .2s, background .2s; }
+  .dot:hover { background: var(--dot-hover); }
+  .dot[aria-current="true"] { background: var(--violet); transform: scale(1.3); }
+  .arrow:focus-visible, .dot:focus-visible, .theme:focus-visible { outline: 2px solid var(--violet); outline-offset: 3px; }
+  .hint { margin: 16px 0 0; text-align: center; font-size: .78rem; color: var(--muted); }
+  .theme { position: fixed; top: 12px; right: 12px; z-index: 5; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--card-edge); background: var(--card); color: var(--fg); cursor: pointer; }
+  .theme svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<button type="button" class="theme" id="theme" aria-label="Switch to dark mode">
+  <svg id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
+  <svg id="moon" viewBox="0 0 24 24" hidden><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+</button>
+
+<section aria-roledescription="carousel" aria-label="Memory Vault" style="width:100%;display:flex;flex-direction:column;align-items:center">
+  <h1>Memory Vault</h1>
+  <div class="stage" id="stage"><div class="ring" id="ring"></div></div>
+  <div class="controls">
+    <button type="button" class="arrow" id="prev" aria-label="Previous card"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+    <div class="dots" id="dots" role="group" aria-label="Choose a card"></div>
+    <button type="button" class="arrow" id="next" aria-label="Next card"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+  <p class="hint">Drag to spin · Click or press Enter on the centred card to flip · Arrow keys turn the ring</p>
+  <p class="sr" id="live" aria-live="polite"></p>
+</section>
+
+<script>
+  var items = [
+    { c: 'LANGUAGE: Python', t: 'First Line of Code', i: '💻', p: "The terminal glowed, displaying my first 'Hello, World!'...", f: "I remember the thrill of typing my first 'Hello, World!' in Python. It was simple, yet it opened a portal to endless possibilities. The interpreter executed the command flawlessly, and I knew this was just the beginning.", l: 'console: ~', h: '09:00:00' },
+    { c: 'FRAMEWORK: ReactJS', t: 'Debugging the Matrix', i: '🐛', p: 'The error messages multiplied, haunting my console...', f: 'They appeared from the depths of the console, cryptic error messages glowing red. Debugging a complex ReactJS component felt like navigating a vast, interconnected matrix. Each fix unveiled new issues.', l: 'localhost:3000', h: '14:30:15' },
+    { c: 'CONCEPT: Algorithms', t: 'The Algorithm Library', i: '📖', p: 'Endless tomes of sorting, searching, and optimization...', f: 'Endless shelves containing every possible solution. I found my own data structures there, pages still being written as I coded. The Librarian told me I was never supposed to reinvent the wheel.', l: 'Stack Overflow', h: '11:05:40' },
+    { c: 'PARADIGM: Abstraction', t: 'The Abstract Void', i: '⚛️', p: 'Nothing concrete exists here, yet I feel the underlying logic...', f: 'Nothing concrete exists here, yet I feel the underlying logic. The Abstract Void is the space between concrete implementations, a quantum foam of design patterns. I stayed too long designing and began to dissolve into pure theory.', l: 'design-patterns.md', h: '--:--:--' },
+    { c: 'TOOL: Git', t: 'The Version Mirror', i: '🌿', p: 'I saw my code, but not as it is now; multiple branches reflecting...', f: "I saw my code, but not as it is now. The mirror of Git showed all my possible branches across different commits. Some were stable, some were experimental. All were my work. The reflection spoke: 'You need to rebase.'", l: 'github.com/my-repo', h: '18:55:20' },
+    { c: 'PROCESS: Deployment', t: 'The Deployment Dream', i: '🚀', p: "I'm trying to send it live, but which environment is real?", f: "I'm trying to send my application live, but which environment is real? Every server feels familiar yet subtly different. The boundaries between staging and production are thinning. Sometimes I see through the logs of other instances.", l: 'cloud-server:port', h: 'NOW' }
+  ];
+  var N = items.length, STEP = 360 / N, SENS = .3, THRESH = 6;
+  var rotation = 0, flipped = -1, dragging = false, W = 280, H = 400, R = 360;
+  var stage = document.getElementById('stage'), ring = document.getElementById('ring');
+  var slots = [], cards = [], dots = [];
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  items.forEach(function (it, k) {
+    var slot = document.createElement('div');
+    slot.className = 'slot';
+    slot.setAttribute('role', 'group');
+    slot.setAttribute('aria-roledescription', 'slide');
+    slot.setAttribute('aria-label', (k + 1) + ' of ' + N + ': ' + it.t);
+    slot.innerHTML =
+      '<div class="card" role="button" aria-expanded="false">' +
+        '<div class="face front"><p class="cat">' + esc(it.c) + '</p><h2>' + esc(it.t) + '</h2><div class="well"><span aria-hidden="true">' + it.i + '</span></div><p>' + esc(it.p) + '</p></div>' +
+        '<div class="face back" aria-hidden="true"><h2>' + esc(it.t) + '</h2><p>' + esc(it.f) + '</p><div class="meta"><span class="loc"><span class="sr">Location: </span>📍 ' + esc(it.l) + '</span><span class="time"><span class="sr">Time: </span>🕒 ' + esc(it.h) + '</span></div></div>' +
+      '</div>';
+    var card = slot.firstChild;
+    card.addEventListener('click', function () { toggle(k); });
+    card.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(k); } });
+    ring.appendChild(slot); slots.push(slot); cards.push(card);
+
+    var d = document.createElement('button');
+    d.type = 'button'; d.className = 'dot'; d.setAttribute('aria-label', 'Show ' + it.t);
+    d.addEventListener('click', function () { goTo(k); });
+    document.getElementById('dots').appendChild(d); dots.push(d);
+  });
+
+  function active() { return ((Math.round(-rotation / STEP) % N) + N) % N; }
+
+  function layout() {
+    var sw = stage.clientWidth;
+    W = Math.min(280, Math.max(sw * .62, 180));
+    H = Math.round(W * 1.43);
+    R = Math.round(W / 2 / Math.tan(Math.PI / N)) + 40;
+    stage.style.height = (H + 80) + 'px';
+    slots.forEach(function (s, k) {
+      s.style.width = W + 'px'; s.style.height = H + 'px';
+      s.style.marginLeft = (-W / 2) + 'px'; s.style.marginTop = (-H / 2) + 'px';
+      s.style.transform = 'rotateY(' + (STEP * k) + 'deg) translateZ(' + R + 'px)';
+    });
+    render();
+  }
+
+  var lastActive = -1;
+  function render() {
+    ring.style.transform = 'translateZ(-' + R + 'px) rotateY(' + rotation + 'deg)';
+    var a = active();
+    slots.forEach(function (s, k) {
+      var on = k === a;
+      s.classList.toggle('off', !on);
+      on ? s.removeAttribute('aria-hidden') : s.setAttribute('aria-hidden', 'true');
+      cards[k].tabIndex = on ? 0 : -1;
+      var fl = flipped === k;
+      cards[k].classList.toggle('flip', fl);
+      cards[k].setAttribute('aria-expanded', fl);
+      cards[k].setAttribute('aria-label', items[k].t + '. ' + (fl ? 'Press Enter to show the summary' : 'Press Enter to read the full text'));
+      s.querySelector('.front').setAttribute('aria-hidden', fl);
+      s.querySelector('.back').setAttribute('aria-hidden', !fl);
+      on ? dots[k].setAttribute('aria-current', 'true') : dots[k].removeAttribute('aria-current');
+    });
+    if (a !== lastActive) { document.getElementById('live').textContent = 'Card ' + (a + 1) + ' of ' + N + ': ' + items[a].t; lastActive = a; }
+  }
+
+  function rotateBy(dir) { flipped = -1; rotation = Math.round(rotation / STEP) * STEP + dir * STEP; render(); }
+  function goTo(k) {
+    flipped = -1;
+    var cur = Math.round(-rotation / STEP), delta = k - (((cur % N) + N) % N);
+    if (delta > N / 2) delta -= N; if (delta < -N / 2) delta += N;
+    rotation = (cur + delta) * -STEP; render();
+  }
+  function toggle(k) { if (k !== active()) return; flipped = flipped === k ? -1 : k; render(); }
+
+  var drag = null;
+  stage.addEventListener('pointerdown', function (e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    drag = { x: e.clientX, r: rotation, cap: false };
+  });
+  stage.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var dx = e.clientX - drag.x;
+    if (!drag.cap && Math.abs(dx) < THRESH) return;
+    if (!drag.cap) { stage.setPointerCapture(e.pointerId); drag.cap = true; dragging = true; stage.classList.add('dragging'); flipped = -1; }
+    rotation = drag.r + dx * SENS; render();
+  });
+  function end(e) {
+    if (!drag) return;
+    if (drag.cap) { stage.releasePointerCapture(e.pointerId); stage.classList.remove('dragging'); dragging = false; rotation = Math.round(rotation / STEP) * STEP; render(); }
+    drag = null;
+  }
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+  stage.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); rotateBy(1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); rotateBy(-1); }
+    else if (e.key === 'Escape') { flipped = -1; render(); }
+  });
+  document.getElementById('prev').addEventListener('click', function () { rotateBy(1); });
+  document.getElementById('next').addEventListener('click', function () { rotateBy(-1); });
+  window.addEventListener('resize', layout);
+  if (window.ResizeObserver) new ResizeObserver(layout).observe(stage);
+
+  var root = document.documentElement;
+  function isDark() { var t = root.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
+  function paintTheme() {
+    var d = isDark();
+    document.getElementById('sun').toggleAttribute('hidden', d); document.getElementById('moon').toggleAttribute('hidden', !d);
+    document.getElementById('theme').setAttribute('aria-label', d ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+  document.getElementById('theme').addEventListener('click', function () { root.setAttribute('data-theme', isDark() ? 'light' : 'dark'); paintTheme(); });
+  paintTheme();
+  layout();
+</script>
+
+</body>
+</html>
