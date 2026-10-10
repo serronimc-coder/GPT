@@ -21,6 +21,9 @@
   function show(name) {
     document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + name));
     state.screen = name;
+    document.body.classList.toggle('crop-mode', name === 'crop');
+    $('crop-bar').hidden = name !== 'crop';
+    $('nav').hidden = name === 'crop';
     selectTab(name === 'result' ? tabCards : tabScan);
     window.scrollTo(0, 0);
   }
@@ -69,9 +72,9 @@
       state.qi++;
       return nextPhoto();
     }
-    runDetection();
     state.cropping = true;
     show('crop');
+    runDetection();
   }
 
   function runDetection() {
@@ -86,10 +89,10 @@
   function updateHint(detected) {
     const n = state.cards.length;
     $('crop-hint').textContent = detected === false
-      ? 'Carte non détectée : placez les 4 coins sur les angles de la carte.'
+      ? 'Carte non détectée : placez les 4 coins sur ses angles.'
       : n > 1
-        ? `${n} cartes détectées. Touchez une carte pour la sélectionner, glissez ses coins pour affiner.`
-        : 'Carte détectée. Glissez les coins pour affiner si besoin.';
+        ? `${n} cartes détectées. Touchez-en une, glissez ses coins.`
+        : 'Carte détectée. Glissez les coins pour affiner.';
     $('card-del').disabled = n <= 1;
   }
 
@@ -102,8 +105,13 @@
   function drawCrop() {
     const src = state.source;
     if (!src || !state.cards.length) return;
-    const maxW = Math.min(window.innerWidth - 48, 600);
-    const maxH = Math.max(240, window.innerHeight * 0.6);
+    // La zone d'image a une hauteur fixe (du haut de l'écran jusqu'à la barre d'actions) : rien ne bouge d'une photo à l'autre.
+    const stage = $('crop-stage');
+    stage.style.height = '';
+    const bottom = $('crop-bar').getBoundingClientRect().top - 12;
+    stage.style.height = Math.max(180, bottom - stage.getBoundingClientRect().top) + 'px';
+    const maxW = stage.clientWidth - 12;
+    const maxH = stage.clientHeight - 12;
     view.scale = Math.min(maxW / src.width, maxH / src.height);
     const W = Math.round(src.width * view.scale), H = Math.round(src.height * view.scale);
     const dpr = window.devicePixelRatio || 1;
