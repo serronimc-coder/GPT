@@ -139,21 +139,21 @@
     ctx.fill('evenodd');
     quads.forEach((pts, qi) => {
       const on = qi === state.sel;
-      ctx.strokeStyle = on ? '#38bdf8' : 'rgba(255,255,255,.8)';
+      ctx.strokeStyle = on ? '#2dd4bf' : 'rgba(255,255,255,.8)';
       ctx.lineWidth = on ? 3 : 1.5;
       ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.closePath(); ctx.stroke();
       if (quads.length > 1) {
         const cx = pts.reduce((s, p) => s + p.x, 0) / 4, cy = pts.reduce((s, p) => s + p.y, 0) / 4;
-        ctx.fillStyle = on ? '#38bdf8' : 'rgba(255,255,255,.85)';
+        ctx.fillStyle = on ? '#2dd4bf' : 'rgba(255,255,255,.85)';
         ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#082f49'; ctx.font = '600 14px system-ui, sans-serif';
+        ctx.fillStyle = '#04201c'; ctx.font = '600 14px system-ui, sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(String(qi + 1), cx, cy + 1);
       }
       if (on) {
         pts.forEach((p) => {
           ctx.beginPath(); ctx.arc(p.x, p.y, HANDLE_R, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(56,189,248,.35)'; ctx.fill(); ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; ctx.stroke();
+          ctx.fillStyle = 'rgba(45,212,191,.3)'; ctx.fill(); ctx.strokeStyle = '#2dd4bf'; ctx.lineWidth = 2; ctx.stroke();
         });
       }
     });
@@ -353,8 +353,7 @@
   }
 
   /* ---------- navbar en verre ---------- */
-  const root = document.documentElement;
-  const tabScan = $('tab-scan'), tabCards = $('tab-cards'), lozenge = $('lozenge');
+    const tabScan = $('tab-scan'), tabCards = $('tab-cards'), lozenge = $('lozenge');
   const tabs = [tabScan, tabCards];
 
   function moveLozenge(animate) {
@@ -380,17 +379,6 @@
   window.addEventListener('resize', () => moveLozenge(false));
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => moveLozenge(false));
 
-  function isDark() {
-    const t = root.getAttribute('data-theme');
-    return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-  }
-  function paintMode() {
-    const d = isDark();
-    $('sun').hidden = d; $('moon').hidden = !d;
-    $('mode').setAttribute('aria-label', d ? 'Passer en mode clair' : 'Passer en mode sombre');
-  }
-  $('mode').addEventListener('click', () => { root.setAttribute('data-theme', isDark() ? 'light' : 'dark'); paintMode(); });
-  paintMode();
   moveLozenge(false);
 
   /* ---------- événements ---------- */
