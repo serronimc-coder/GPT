@@ -1,11 +1,11 @@
 ---
 name: ui-design-library
-description: Reusable UI designs built in this repo, ready to drop into any project. Use when the user asks for one of these looks or components, or says "use my design", "same style as before", "my login page", "my navbar", "my carousel": neumorphic login, dark "Flow" login (orb, Google/Apple), liquid navbar (mint blob), glass navbar with light/dark toggle, 3D card carousel (HTML or React + Tailwind).
+description: Reusable UI designs built in this repo, ready to drop into any project. Use when the user asks for one of these looks or components, or says "use my design", "same style as before", "my login page", "my navbar", "my sidebar", "my carousel": neumorphic login, dark "Flow" login (orb, Google/Apple), liquid navbar (mint blob), glass navbar with light/dark toggle, responsive sidebar "Hello Diet", 3D card carousel (HTML or React + Tailwind).
 ---
 
 # UI design library
 
-Five finished designs live in `references/`. Each file is complete and was tested in a browser. Start from the file, then adapt it to the host project instead of rewriting from scratch.
+Six finished designs live in `references/`. Each file is complete and was tested in a browser. Start from the file, then adapt it to the host project instead of rewriting from scratch.
 
 ## Pick the design
 
@@ -15,6 +15,7 @@ Five finished designs live in `references/`. Each file is complete and was teste
 | Dark login "Flow": glowing orb, glass card, eye toggle, Google/Apple buttons, loading spinner, success state | `references/flow-login-dark.html` | Dark only by design. Social buttons and links are placeholders. |
 | Dark pill navbar, 5 icons, mint liquid blob that stretches to the tapped icon | `references/liquid-navbar-dark.html` | Goo effect = SVG filter + two blobs with different timings. Arrow keys work. |
 | Frosted-glass navbar, sliding white lozenge, sun/moon theme button | `references/glass-nav-light-dark.html` | Light and dark tokens. Labels collapse to icons under 480px. |
+| Responsive sidebar: icon rail that grows to a 240px panel, blue search box, menu filter, light/dark | `references/responsive-sidebar.html` | Poppins from Google Fonts with a system fallback. Sample cards are example figures. Panel slides over the content; backdrop and Escape close it. |
 | 3D carousel of flippable cards, drag, keyboard, dots | `references/carousel-3d-vanilla.html` (plain HTML/JS) or `references/animated-3d-carousel.tsx` + `references/utils.ts` (React 19, TypeScript, Tailwind, lucide-react) | Pick the TSX when the host project uses React and Tailwind. |
 
 ## How to apply

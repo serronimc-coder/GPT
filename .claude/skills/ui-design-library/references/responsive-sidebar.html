@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Hello Diet Sidebar</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a fixed white rail that grows from icons-only (60px) to a 240px panel; the page content keeps its own offset and the panel slides over it */
+  :root {
+    color-scheme: light;
+    --page: #e7e9f5;
+    --panel: #ffffff;
+    --panel-shadow: rgba(0, 0, 0, .1);
+    --brand: #0b2997;
+    --brand-fg: #ffffff;
+    --fg: #1d2240;
+    --muted: #6d7391;
+    --hover: #eef0fb;
+    --line: #e3e6f3;
+    --card: #ffffff;
+    --ok: #1f9d6b;
+    --font: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --rail: 60px;
+    --open: 240px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0e1020; --panel: #171a2e; --panel-shadow: rgba(0, 0, 0, .5);
+      --brand: #7c93ff; --brand-fg: #0c1030; --fg: #eceefc; --muted: #98a0c4;
+      --hover: #20243d; --line: #262a45; --card: #171a2e; --ok: #4ade9a;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0e1020; --panel: #171a2e; --panel-shadow: rgba(0, 0, 0, .5);
+    --brand: #7c93ff; --brand-fg: #0c1030; --fg: #eceefc; --muted: #98a0c4;
+    --hover: #20243d; --line: #262a45; --card: #171a2e; --ok: #4ade9a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body { position: relative; min-height: 100vh; width: 100%; background: var(--page); color: var(--fg); font-family: var(--font); }
+
+  .sidebar {
+    position: fixed; top: 0; left: 0; z-index: 20;
+    width: var(--rail); height: 100%;
+    padding: 6px 12px;
+    background: var(--panel);
+    box-shadow: 5px 0 30px var(--panel-shadow);
+    transition: all .5s ease;
+    overflow: hidden;
+  }
+  .sidebar.active { width: var(--open); }
+  .top { position: relative; display: flex; align-items: center; height: 50px; }
+  .logo {
+    display: flex; align-items: center; height: 50px; width: 100%;
+    margin-left: 5px; color: var(--brand); font-size: 28px;
+    pointer-events: none; opacity: 0; transition: opacity 1.5s ease;
+  }
+  .sidebar.active .logo { opacity: 1; }
+  .logo svg { width: 28px; height: 28px; fill: currentColor; flex: none; }
+  .logo-name { font-size: 22px; font-weight: 600; margin: 0 10px; white-space: nowrap; }
+  .toggle {
+    position: absolute; top: 50%; left: 50%; translate: -50% -50%;
+    width: 40px; height: 40px; display: grid; place-items: center;
+    border: 0; border-radius: 10px; background: none; color: var(--fg); cursor: pointer;
+    transition: left .5s ease, background .2s;
+  }
+  .toggle:hover { background: var(--hover); }
+  .sidebar.active .toggle { left: 90%; }
+  svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  .search { position: relative; height: 50px; margin: 10px 0 14px; }
+  .search input {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    padding-left: 50px; border: 0; outline: 0; border-radius: 14px;
+    background: var(--brand); color: var(--brand-fg);
+    font: 500 15px var(--font);
+    box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--brand) 70%, transparent);
+    transition: all .5s ease;
+  }
+  .search input::placeholder { color: color-mix(in srgb, var(--brand-fg) 65%, transparent); }
+  .search button {
+    position: absolute; z-index: 1; top: 0; left: 0; width: 100%; height: 50px;
+    display: flex; align-items: center; justify-content: flex-start; padding-left: 7px; transition: padding .5s ease;
+    border: 0; border-radius: 14px; background: none; color: var(--brand-fg); cursor: pointer;
+  }
+  .search input:focus-visible, .search button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .sidebar.active .search button { padding-left: 13px; }
+  .sidebar:not(.active) .search input { padding-left: 0; }
+  .sidebar:not(.active) .search input::placeholder { color: transparent; }
+  .sidebar:not(.active) .search button { pointer-events: auto; }
+  .sidebar.active .search button { width: 50px; pointer-events: none; }
+
+  .menu { list-style: none; display: grid; gap: 4px; }
+  .menu a {
+    position: relative; display: flex; align-items: center; height: 50px;
+    padding-left: 7px; gap: 16px; border-radius: 12px;
+    color: var(--muted); text-decoration: none; font-size: 15px; font-weight: 500; white-space: nowrap;
+    transition: background .2s, color .2s, padding .5s ease;
+  }
+  .sidebar.active .menu a { padding-left: 13px; }
+  .menu a:hover { background: var(--hover); color: var(--fg); }
+  .menu a[aria-current="page"] { background: var(--hover); color: var(--brand); }
+  .menu a:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+  .menu .label { opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+  .sidebar.active .menu .label { opacity: 1; pointer-events: auto; transition-delay: .15s; }
+  .sidebar:not(.active) .menu a:hover::after, .sidebar:not(.active) .menu a:focus-visible::after {
+    content: attr(data-tip); position: fixed; left: calc(var(--rail) + 8px);
+    padding: 6px 10px; border-radius: 8px; background: var(--brand); color: var(--brand-fg); font-size: 13px; z-index: 30;
+  }
+  .empty { padding: 12px 14px; font-size: 13px; color: var(--muted); }
+
+  .backdrop { position: fixed; inset: 0; z-index: 10; background: rgba(8, 10, 30, .35); opacity: 0; pointer-events: none; transition: opacity .4s; }
+  .backdrop.on { opacity: 1; pointer-events: auto; }
+
+  main { padding-block: 32px; padding-inline: calc(var(--rail) + 20px) 16px; max-width: 1100px; }
+  .head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 20px; }
+  h1 { font-size: clamp(1.3rem, 4vw, 1.8rem); font-weight: 600; }
+  .note { font-size: 13px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+  .card { min-width: 0; padding: 18px; border-radius: 16px; background: var(--card); box-shadow: 0 10px 30px -18px var(--panel-shadow); }
+  .card h2 { font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 8px; }
+  .card .v { font-size: 1.7rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .card .v small { font-size: .9rem; color: var(--muted); font-weight: 500; }
+  .card p { margin-top: 6px; font-size: 13px; color: var(--ok); }
+  .bar { height: 8px; border-radius: 4px; background: var(--hover); margin-top: 12px; overflow: hidden; }
+  .bar span { display: block; height: 100%; border-radius: 4px; background: var(--brand); }
+  .theme { position: fixed; top: 12px; right: 12px; z-index: 5; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+  .theme:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  @media (max-width: 520px) { :root { --open: min(240px, 80vw); } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<button type="button" class="theme" id="theme" aria-label="Switch to dark mode">
+  <svg class="i" id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
+  <svg class="i" id="moon" viewBox="0 0 24 24" hidden><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+</button>
+
+<div class="backdrop" id="backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="Sidebar">
+  <div class="top">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.8 4.5 6.5 4.5c2 0 3.7 1.1 5.5 3.2 1.8-2.1 3.5-3.2 5.5-3.2 3.7 0 5.6 3.9 4.1 7.3C19.5 16.400 12 21 12 21z"/></svg>
+      <span class="logo-name">Hello Diet</span>
+    </div>
+    <button type="button" class="toggle" id="toggle" aria-label="Open sidebar" aria-expanded="false" aria-controls="sidebar">
+      <svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h16"/></svg>
+    </button>
+  </div>
+
+  <div class="search" role="search">
+    <button type="button" id="searchBtn" aria-label="Search the menu"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></button>
+    <input type="search" id="q" placeholder="Search..." aria-label="Search the menu" autocomplete="off" tabindex="-1">
+  </div>
+
+  <nav aria-label="Main">
+    <ul class="menu" id="menu">
+      <li><a href="#dashboard" data-tip="Dashboard" aria-current="page"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M8 17v-5M12 17V8M16 17v-3"/></svg><span class="label">Dashboard</span></a></li>
+      <li><a href="#statistic" data-tip="Workout Statistic"><svg class="i" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg><span class="label">Workout Statistic</span></a></li>
+      <li><a href="#plan" data-tip="Workout Plan"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span class="label">Workout Plan</span></a></li>
+      <li><a href="#map" data-tip="Distance Map"><svg class="i" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span class="label">Distance Map</span></a></li>
+      <li><a href="#food" data-tip="Diet Food Menu"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 17s-4-2.4-5-4.8c-.8-1.800.2-3.700 2.100-3.700 1 0 1.900.6 2.900 1.700 1-1.100 1.900-1.700 2.900-1.700 1.900 0 2.900 1.900 2.100 3.700-1 2.400-5 4.800-5 4.800z"/></svg><span class="label">Diet Food Menu</span></a></li>
+      <li><a href="#record" data-tip="Personal Record"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg><span class="label">Personal Record</span></a></li>
+    </ul>
+    <p class="empty" id="empty" hidden>No match.</p>
+  </nav>
+</aside>
+
+<main>
+  <div class="head">
+    <h1 id="title">Dashboard</h1>
+    <p class="note">Example figures, not real data.</p>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+  var sidebar = document.getElementById('sidebar'), toggle = document.getElementById('toggle');
+  var backdrop = document.getElementById('backdrop'), q = document.getElementById('q');
+  var links = Array.prototype.slice.call(document.querySelectorAll('#menu a'));
+
+  function setOpen(open, focusSearch) {
+    sidebar.classList.toggle('active', open);
+    backdrop.classList.toggle('on', open);
+    toggle.setAttribute('aria-expanded', open);
+    toggle.setAttribute('aria-label', open ? 'Close sidebar' : 'Open sidebar');
+    q.tabIndex = open ? 0 : -1;
+    if (open && focusSearch) setTimeout(function () { q.focus(); }, 250);
+    if (!open) { q.value = ''; filter(); }
+  }
+  toggle.addEventListener('click', function () { setOpen(!sidebar.classList.contains('active')); });
+  document.getElementById('searchBtn').addEventListener('click', function () { setOpen(true, true); });
+  backdrop.addEventListener('click', function () { setOpen(false); toggle.focus(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && sidebar.classList.contains('active')) { setOpen(false); toggle.focus(); } });
+
+  function filter() {
+    var t = q.value.trim().toLowerCase(), shown = 0;
+    links.forEach(function (a) {
+      var ok = !t || a.dataset.tip.toLowerCase().indexOf(t) > -1;
+      a.parentNode.hidden = !ok; if (ok) shown++;
+    });
+    document.getElementById('empty').hidden = shown > 0;
+  }
+  q.addEventListener('input', filter);
+
+  var pages = {
+    dashboard: ['Dashboard', [['Calories today', '1,840', 'kcal', '82% of your goal', 82], ['Steps', '8,420', '', '+12% vs yesterday', 70], ['Water', '1.9', 'L', 'Goal 2.5 L', 76], ['Weight', '72.4', 'kg', '-0.6 kg this month', 45]]],
+    statistic: ['Workout Statistic', [['Workouts this week', '4', '/ 5', 'On track', 80], ['Active minutes', '212', 'min', '+18 min vs last week', 64], ['Calories burned', '1,260', 'kcal', 'Best week this month', 72]]],
+    plan: ['Workout Plan', [['Today', 'Run 5 km', '', 'Easy pace, 30 min', 40], ['Tomorrow', 'Strength', '', 'Upper body, 45 min', 0], ['Rest day', 'Sunday', '', 'Stretch and walk', 0]]],
+    map: ['Distance Map', [['This week', '23.4', 'km', 'Longest run 8.2 km', 78], ['This month', '86.0', 'km', 'Goal 100 km', 86], ['Average pace', '5:42', '/km', '-8 s vs last month', 60]]],
+    food: ['Diet Food Menu', [['Breakfast', '420', 'kcal', 'Oats, banana, yoghurt', 100], ['Lunch', '640', 'kcal', 'Chicken, rice, salad', 100], ['Dinner', '0', 'kcal', 'Planned: fish and vegetables', 0]]],
+    record: ['Personal Record', [['5 km', '24:51', '', 'Set 12 days ago', 100], ['Longest run', '14.2', 'km', 'Set last month', 100], ['Deadlift', '110', 'kg', 'Set 3 weeks ago', 100]]]
+  };
+  function show(key) {
+    var p = pages[key] || pages.dashboard;
+    document.getElementById('title').textContent = p[0];
+    document.getElementById('grid').innerHTML = p[1].map(function (c) {
+      return '<section class="card"><h2>' + c[0] + '</h2><div class="v">' + c[1] + ' <small>' + c[2] + '</small></div><p>' + c[3] + '</p><div class="bar" aria-hidden="true"><span style="width:' + c[4] + '%"></span></div></section>';
+    }).join('');
+    links.forEach(function (a) { a.getAttribute('href') === '#' + key ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'); });
+  }
+  links.forEach(function (a) {
+    a.addEventListener('click', function (e) { e.preventDefault(); show(a.getAttribute('href').slice(1)); if (matchMedia('(max-width: 640px)').matches) setOpen(false); });
+  });
+
+  var root = document.documentElement;
+  function isDark() { var t = root.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
+  function paintTheme() {
+    var d = isDark();
+    document.getElementById('sun').toggleAttribute('hidden', d); document.getElementById('moon').toggleAttribute('hidden', !d);
+    document.getElementById('theme').setAttribute('aria-label', d ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+  document.getElementById('theme').addEventListener('click', function () { root.setAttribute('data-theme', isDark() ? 'light' : 'dark'); paintTheme(); });
+  paintTheme();
+  show('dashboard');
+</script>
+
+</body>
+</html>
