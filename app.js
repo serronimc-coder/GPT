@@ -239,9 +239,11 @@
       grid.appendChild(p);
       $('result-title').textContent = 'Cartes scannées';
       $('save-all').hidden = true;
+      if ($('save-each')) $('save-each').hidden = true;
       return;
     }
     $('save-all').hidden = false;
+    if ($('save-each')) $('save-each').hidden = false;
     state.results.forEach((r, i) => {
       if (!r.enhanced) enhanceCard(r);
       const cell = document.createElement('div');
