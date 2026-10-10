@@ -301,41 +301,43 @@
   // <save-impl>
   // Un site web ne peut pas écrire directement dans la photothèque : on passe par la
   // feuille de partage du système (« Enregistrer l'image » sur iOS, Galerie sur Android).
-  // Résout true si l'image a été confirmée, false si l'utilisateur a refusé.
-  async function saveBlob(blob, name) {
-    const file = new File([blob], name, { type: 'image/jpeg' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: 'Carte de visite' }); return true; }
+  // saveFiles résout true si tout a été confirmé, false si l'utilisateur a refusé.
+  // Plusieurs images partent dans UNE SEULE feuille de partage (« Enregistrer N images »).
+  async function saveFiles(items) {
+    const files = items.map((it) => new File([it.blob], it.name, { type: 'image/jpeg' }));
+    if (navigator.canShare && navigator.canShare({ files })) {
+      try { await navigator.share({ files, title: files.length > 1 ? 'Cartes de visite' : 'Carte de visite' }); return true; }
       catch (e) { if (e.name === 'AbortError') return false; throw e; }
     }
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    for (const it of items) { // repli : un téléchargement par image
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(it.blob); a.download = it.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }
     return true;
   }
+  const SAVED_MESSAGE = (n) => (n > 1 ? `${n} cartes prêtes : choisissez « Enregistrer ${n} images » pour les ajouter à Photos.` : 'Choisissez « Enregistrer l\'image » pour l\'ajouter à Photos.');
   // </save-impl>
+
+  async function itemFor(r, i) { return { blob: await toBlob(r.enhanced), name: fileName(i) }; }
 
   async function saveOne(r, i) {
     try {
-      if (await saveBlob(await toBlob(r.enhanced), fileName(i))) setStatus(`Carte ${i + 1} : choisissez « Enregistrer l'image » pour l'ajouter à Photos.`);
+      if (await saveFiles([await itemFor(r, i)])) setStatus(`Carte ${i + 1} : choisissez « Enregistrer l'image » pour l'ajouter à Photos.`);
     } catch (e) { setStatus('Enregistrement impossible : ' + (e.message || e.code)); }
   }
 
-  // Une confirmation par image : le système n'accepte pas plusieurs fichiers à la fois ici.
+  // Un seul bouton, une seule confirmation pour toutes les cartes.
   async function saveAll() {
-    const total = state.results.length;
-    let done = 0;
+    const n = state.results.length;
     $('save-all').disabled = true;
+    setStatus('Préparation des images…');
     try {
-      for (let i = 0; i < total; i++) {
-        setStatus(`Enregistrement ${i + 1} sur ${total}…`);
-        if (!(await saveBlob(await toBlob(state.results[i].enhanced), fileName(i)))) break;
-        done++;
-      }
-      setStatus(done === total ? `${done} carte${done > 1 ? 's' : ''} enregistrée${done > 1 ? 's' : ''}.` : `${done} sur ${total} enregistrées. Touchez « Enregistrer » sous les cartes restantes.`);
+      const items = await Promise.all(state.results.map(itemFor));
+      setStatus(await saveFiles(items) ? SAVED_MESSAGE(n) : '');
     } catch (e) {
-      setStatus(`${done} sur ${total} enregistrées. ${e.message || e.code || ''}`);
+      setStatus('Enregistrement impossible : ' + (e.message || e.code || ''));
     }
     $('save-all').disabled = false;
   }
