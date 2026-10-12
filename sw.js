@@ -1,5 +1,5 @@
 // Cache de l'application pour un usage hors ligne.
-const CACHE = 'scan-carte-v7';
+const CACHE = 'scan-carte-v8';
 const FILES = ['./', 'index.html', 'style.css', 'scanner.js', 'app.js', 'manifest.webmanifest', 'icons/icon.svg'];
 self.addEventListener('install', (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())));
 self.addEventListener('activate', (e) => e.waitUntil(

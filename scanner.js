@@ -303,7 +303,7 @@
     if (frac < 0.03 || frac > 0.985) return null;
     const solidity = Math.min(1, size / quadArea); // 1 = la forme remplit bien son quadrilatère
     // plus la carte est grande dans l'image, mieux c'est, mais surtout il faut qu'elle soit « carrée »
-    const score = solidity * (0.6 + 0.4 * Math.min(1, frac / 0.4));
+    const score = solidity * (0.75 + 0.25 * Math.min(1, frac / 0.15));
     return { corners: orderCorners(quad), score, solidity, area: quadArea, frac };
   }
 
@@ -397,29 +397,219 @@
     return fillHoles(mask, w, h);
   }
 
+  // Stratégie 3 : distance de couleur au fond (médiane du pourtour), utile quand la
+  // luminosité de la carte et du fond est proche mais pas la teinte.
+  function maskFromColor(img, w, h) {
+    const ch = [0, 1, 2].map((c) => {
+      const p = new Float32Array(w * h);
+      for (let i = 0; i < p.length; i++) p[i] = img.data[i * 4 + c];
+      return boxBlur(p, w, h, 1);
+    });
+    const margin = Math.max(2, Math.round(Math.min(w, h) * 0.03));
+    const bg = ch.map((p) => {
+      const vals = [];
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++)
+          if (x < margin || y < margin || x >= w - margin || y >= h - margin) vals.push(p[y * w + x]);
+      vals.sort((a, b) => a - b);
+      return vals[vals.length >> 1];
+    });
+    const dist = new Float32Array(w * h);
+    for (let i = 0; i < dist.length; i++) {
+      dist[i] = Math.min(255, Math.hypot(ch[0][i] - bg[0], ch[1][i] - bg[1], ch[2][i] - bg[2]) * 0.6);
+    }
+    const hist = new Float64Array(256);
+    for (let i = 0; i < dist.length; i++) hist[Math.round(dist[i])]++;
+    let sumAll = 0;
+    for (let v = 0; v < 256; v++) sumAll += v * hist[v];
+    let wB = 0, sumB = 0, bestVar = -1, thr = 20;
+    for (let v = 0; v < 256; v++) {
+      wB += hist[v];
+      const wF = dist.length - wB;
+      if (!wB || !wF) continue;
+      sumB += v * hist[v];
+      const mB = sumB / wB, mF = (sumAll - sumB) / wF;
+      const between = wB * wF * (mB - mF) * (mB - mF);
+      if (between > bestVar) { bestVar = between; thr = v; }
+    }
+    thr = Math.max(thr, 10); // pas de détection sur du bruit pur
+    let mask = new Uint8Array(w * h), on = 0;
+    for (let i = 0; i < mask.length; i++) { mask[i] = dist[i] > thr ? 1 : 0; on += mask[i]; }
+    if (on < w * h * 0.03 || on > w * h * 0.92) return new Uint8Array(w * h);
+    mask = dilate(dilate(erode(erode(mask, w, h), w, h), w, h), w, h);
+    return fillHoles(mask, w, h);
+  }
+
+  /* ---------- affinage des coins sur les vrais bords ---------- */
+
+  function sampleRGB(img, x, y, out) {
+    const { data, width: w, height: h } = img;
+    const fx = clamp(x - 0.5, 0, w - 1), fy = clamp(y - 0.5, 0, h - 1);
+    const x0 = Math.floor(fx), y0 = Math.floor(fy), x1 = Math.min(w - 1, x0 + 1), y1 = Math.min(h - 1, y0 + 1);
+    const tx = fx - x0, ty = fy - y0;
+    for (let c = 0; c < 3; c++) {
+      out[c] = (data[(y0 * w + x0) * 4 + c] * (1 - tx) + data[(y0 * w + x1) * 4 + c] * tx) * (1 - ty) +
+               (data[(y1 * w + x0) * 4 + c] * (1 - tx) + data[(y1 * w + x1) * 4 + c] * tx) * ty;
+    }
+  }
+
+  // Droite par moindres carrés totaux : { x, y } (point) et { dx, dy } (direction unitaire).
+  function fitLine(pts) {
+    let mx = 0, my = 0;
+    for (const p of pts) { mx += p.x; my += p.y; }
+    mx /= pts.length; my /= pts.length;
+    let sxx = 0, sxy = 0, syy = 0;
+    for (const p of pts) { const a = p.x - mx, b = p.y - my; sxx += a * a; sxy += a * b; syy += b * b; }
+    const ang = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+    return { x: mx, y: my, dx: Math.cos(ang), dy: Math.sin(ang) };
+  }
+  const lineDist = (l, p) => Math.abs((p.x - l.x) * -l.dy + (p.y - l.y) * l.dx);
+
+  function intersect(l1, l2) {
+    const den = l1.dx * l2.dy - l1.dy * l2.dx;
+    if (Math.abs(den) < 0.2) return null; // quasi parallèles
+    const t = ((l2.x - l1.x) * l2.dy - (l2.y - l1.y) * l2.dx) / den;
+    return { x: l1.x + t * l1.dx, y: l1.y + t * l1.dy };
+  }
+
+  /**
+   * Replace chaque côté du quadrilatère sur le contour réel : on cherche, le long de la normale en
+   * ~100 points par côté, le saut de couleur le plus net près de la position initiale, puis on ajuste
+   * une droite robuste (rejet des points aberrants : texte, ombre, reflets). Les coins sont
+   * les intersections des droites, ce qui donne aussi les coins « virtuels » des cartes arrondies.
+   * @returns {{corners, support}} support = part des points retenus (0..1)
+   */
+  function refineQuad(img, quad, R) {
+    const lines = [];
+    let kept = 0, total = 0;
+    const cols = [[0, 0, 0], [0, 0, 0]];
+    for (let e = 0; e < 4; e++) {
+      const a = quad[e], b = quad[(e + 1) % 4];
+      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+      if (len < 8) return null;
+      const tx = dx / len, ty = dy / len, nx = -ty, ny = tx;
+      const N = clamp(Math.round(len / 5), 24, 140);
+      const step = 0.5, K = Math.round(R / step);
+      const pts = [];
+      for (let i = 0; i < N; i++) {
+        const t = 0.1 + (0.8 * (i + 0.5)) / N;
+        const cx = a.x + dx * t, cy = a.y + dy * t;
+        // profil de couleur le long de la normale, moyenné sur 3 positions tangentes
+        const prof = [];
+        for (let k = -K - 1; k <= K + 1; k++) {
+          const v = [0, 0, 0];
+          for (const off of [-2, 0, 2]) {
+            sampleRGB(img, cx + nx * k * step + tx * off, cy + ny * k * step + ty * off, cols[0]);
+            v[0] += cols[0][0] / 3; v[1] += cols[0][1] / 3; v[2] += cols[0][2] / 3;
+          }
+          prof.push(v);
+        }
+        let best = -1, bestScore = 0;
+        const mags = [];
+        for (let k = 1; k < prof.length - 1; k++) {
+          mags.push(Math.hypot(prof[k + 1][0] - prof[k - 1][0], prof[k + 1][1] - prof[k - 1][1], prof[k + 1][2] - prof[k - 1][2]));
+        }
+        for (let k = 0; k < mags.length; k++) {
+          const s = (k - K) * step; // décalage par rapport à la position initiale
+          const sc = mags[k] * (1 - 0.45 * Math.abs(s) / R);
+          if (mags[k] > 7 && sc > bestScore) { bestScore = sc; best = k; }
+        }
+        if (best < 0) continue;
+        // affinage parabolique du pic
+        let off = 0;
+        if (best > 0 && best < mags.length - 1) {
+          const m0 = mags[best - 1], m1 = mags[best], m2 = mags[best + 1];
+          const dd = m0 - 2 * m1 + m2;
+          if (dd < 0) off = clamp(0.5 * (m0 - m2) / dd, -1, 1);
+        }
+        const s = (best - K + off) * step;
+        pts.push({ x: cx + nx * s, y: cy + ny * s });
+      }
+      total += N;
+      if (pts.length < Math.max(8, N * 0.3)) return null;
+      let inl = pts, line = fitLine(inl);
+      for (let it = 0; it < 4; it++) {
+        const res = pts.map((p) => lineDist(line, p));
+        const sorted = res.slice().sort((p, q) => p - q);
+        const thr = Math.max(0.8, 2.5 * sorted[sorted.length >> 1]);
+        const next = pts.filter((p, i) => res[i] <= thr);
+        if (next.length < Math.max(8, N * 0.25)) break;
+        inl = next; line = fitLine(inl);
+      }
+      kept += inl.length;
+      lines.push(line);
+    }
+    const out = [];
+    for (let i = 0; i < 4; i++) {
+      const c = intersect(lines[(i + 3) % 4], lines[i]);
+      if (!c || Math.hypot(c.x - quad[i].x, c.y - quad[i].y) > R * 6) return null;
+      out.push(c);
+    }
+    // forme plausible : angles entre 50° et 130°, côtés opposés de longueurs comparables
+    for (let i = 0; i < 4; i++) {
+      const p = out[(i + 3) % 4], q = out[i], r = out[(i + 1) % 4];
+      const ang = Math.acos(clamp(((p.x - q.x) * (r.x - q.x) + (p.y - q.y) * (r.y - q.y)) / (dist(p, q) * dist(r, q) + 1e-9), -1, 1)) * 180 / Math.PI;
+      if (ang < 50 || ang > 130) return null;
+    }
+    return { corners: out, support: kept / total };
+  }
+
+  /* ---------- détection ---------- */
+
+  // Segmentations candidates (coordonnées de la petite image), chacune → quadrilatères bruts.
+  function rawCandidates(small, multi) {
+    const w = small.width, h = small.height, g = toGray(small);
+    const masks = [maskFromEdges(g, w, h), maskFromThreshold(g, w, h), maskFromColor(small, w, h)];
+    const out = [];
+    for (const mask of masks) {
+      if (multi) {
+        for (const { mask: comp, size } of allComponents(mask, w, h, w * h * 0.03, 12)) {
+          const c = candidateFromComponent(comp, size, w, h);
+          if (c && c.solidity > 0.8) out.push(c);
+        }
+      } else {
+        const c = candidateFromMask(mask, w, h);
+        if (c && c.solidity > 0.8) out.push(c);
+      }
+    }
+    return out;
+  }
+
+  // Affine chaque candidat sur l'image intermédiaire (deux passes : large puis fine) et recalcule son score.
+  function refineCandidates(img, cands, ratioSmall) {
+    const { img: mid, scale: s2 } = resize(img, 1400);
+    const k = s2 / ratioSmall;           // petite image → image intermédiaire
+    return cands.map((c) => {
+      let quad = c.corners.map((p) => ({ x: p.x * k, y: p.y * k }));
+      let last = null;
+      for (const R of [Math.max(8, 9 * k), Math.max(4, 3 * k), Math.max(3, 1.5 * k)]) {
+        const r = refineQuad(mid, quad, R);
+        if (!r) break;
+        last = r; quad = r.corners;
+      }
+      if (!last) return { corners: c.corners.map((p) => ({ x: p.x * k / s2, y: p.y * k / s2 })), score: c.score * 0.5, support: 0, area: c.area / (ratioSmall * ratioSmall) };
+      // une carte de visite a un format de 1,4 à 2,2 environ : on écarte les formes trop carrées ou trop allongées
+      const w1 = (dist(quad[0], quad[1]) + dist(quad[3], quad[2])) / 2, h1 = (dist(quad[0], quad[3]) + dist(quad[1], quad[2])) / 2;
+      const ratio = Math.max(w1, h1) / Math.max(1, Math.min(w1, h1));
+      const prior = ratio >= 1.2 && ratio <= 2.4 ? 1 : ratio >= 1.05 && ratio <= 3 ? 0.6 : 0.3;
+      return { corners: quad.map((p) => ({ x: p.x / s2, y: p.y / s2 })), score: c.score * (0.3 + 0.7 * last.support) * prior, support: last.support, area: polyArea(quad) / (s2 * s2) };
+    });
+  }
+
+  function fallbackQuad(img) {
+    const mx = img.width * 0.1, my = img.height * 0.1;
+    return [{ x: mx, y: my }, { x: img.width - mx, y: my }, { x: img.width - mx, y: img.height - my }, { x: mx, y: img.height - my }];
+  }
+
   /**
    * Détecte les 4 coins de la carte.
    * @returns {{corners: {x,y}[], detected: boolean}} coins TL,TR,BR,BL en pixels de `img`.
    */
   function detectCard(img) {
     const { img: small, scale } = resize(img, 480);
-    const w = small.width, h = small.height;
-    const g = toGray(small);
-    const candidates = [candidateFromMask(maskFromEdges(g, w, h), w, h), candidateFromMask(maskFromThreshold(g, w, h), w, h)]
-      .filter(Boolean)
-      .sort((a, b) => b.score - a.score);
-    const best = candidates[0];
-    if (best && best.solidity > 0.8) {
-      return { detected: true, corners: best.corners.map((p) => ({ x: p.x / scale, y: p.y / scale })) };
-    }
-    const mx = img.width * 0.1, my = img.height * 0.1;
-    return {
-      detected: false,
-      corners: [
-        { x: mx, y: my }, { x: img.width - mx, y: my },
-        { x: img.width - mx, y: img.height - my }, { x: mx, y: img.height - my },
-      ],
-    };
+    const cands = refineCandidates(img, rawCandidates(small, false), scale).sort((a, b) => b.score - a.score);
+    if (cands.length) return { detected: true, corners: orderCorners(cands[0].corners) };
+    return { detected: false, corners: fallbackQuad(img) };
   }
 
   function pointInQuad(p, q) {
@@ -439,16 +629,7 @@
    */
   function detectCards(img) {
     const { img: small, scale } = resize(img, 480);
-    const w = small.width, h = small.height;
-    const g = toGray(small);
-    let cands = [];
-    for (const mask of [maskFromEdges(g, w, h), maskFromThreshold(g, w, h)]) {
-      for (const { mask: comp, size } of allComponents(mask, w, h, w * h * 0.03, 12)) {
-        const c = candidateFromComponent(comp, size, w, h);
-        if (c && c.solidity > 0.8) cands.push(c);
-      }
-    }
-    cands.sort((a, b) => b.score - a.score);
+    const cands = refineCandidates(img, rawCandidates(small, true), scale).sort((a, b) => b.score - a.score);
     const kept = [];
     for (const c of cands) {
       const cc = centroid(c.corners);
@@ -456,16 +637,13 @@
     }
     const biggest = Math.max(0, ...kept.map((c) => c.area));
     const cards = kept.filter((c) => c.area >= biggest * 0.25);
-    if (!cards.length) {
-      const d = detectCard(img);
-      return { detected: false, corners: [d.corners] };
-    }
+    if (!cards.length) return { detected: false, corners: [fallbackQuad(img)] };
     const rowH = Math.sqrt(biggest) * 0.6;
     cards.sort((a, b) => {
       const ca = centroid(a.corners), cb = centroid(b.corners);
       return Math.abs(ca.y - cb.y) > rowH ? ca.y - cb.y : ca.x - cb.x;
     });
-    return { detected: true, corners: cards.map((c) => c.corners.map((p) => ({ x: p.x / scale, y: p.y / scale }))) };
+    return { detected: true, corners: cards.map((c) => orderCorners(c.corners)) };
   }
 
   /* ---------- redressement de perspective ---------- */

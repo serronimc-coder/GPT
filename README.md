@@ -17,7 +17,8 @@ La caméra et le partage de fichiers exigent HTTPS sur un téléphone (GitHub Pa
 
 ## Tests
 
-    node test/test.js
+    node test/test.js     # scènes simples + plusieurs cartes
+    node test/bench.js    # précision des coins sur scènes réalistes (coins arrondis, ombre, bruit, faible contraste) : < 6 px exigé
 
 Génère des scènes synthétiques (carte projetée par une vraie caméra, fonds clair/sombre, forte rotation) et vérifie coins, rapport d'aspect, éclairage et mesure de netteté.
 
