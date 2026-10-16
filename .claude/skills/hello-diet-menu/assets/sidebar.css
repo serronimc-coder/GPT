@@ -1,0 +1,149 @@
+/* Responsive sidebar: icon rail (60px) that grows to a 240px panel.
+   Optional font: <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+   Colours are CSS variables. Override them in your own CSS after this file.
+   Dark theme follows the OS, or force it with <html data-theme="dark"> or "light". */
+
+:root {
+    color-scheme: light;
+    --page: #e7e9f5;
+    --panel: #ffffff;
+    --panel-shadow: rgba(0, 0, 0, .1);
+    --brand: #0b2997;
+    --brand-fg: #ffffff;
+    --fg: #1d2240;
+    --muted: #6d7391;
+    --hover: #eef0fb;
+    --line: #e3e6f3;
+    --card: #ffffff;
+    --ok: #1f9d6b;
+    --font: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --rail: 60px;
+    --open: 240px;
+  }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0e1020; --panel: #171a2e; --panel-shadow: rgba(0, 0, 0, .5);
+      --brand: #7c93ff; --brand-fg: #0c1030; --fg: #eceefc; --muted: #98a0c4;
+      --hover: #20243d; --line: #262a45; --card: #171a2e; --ok: #4ade9a;
+    }
+  }
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0e1020; --panel: #171a2e; --panel-shadow: rgba(0, 0, 0, .5);
+    --brand: #7c93ff; --brand-fg: #0c1030; --fg: #eceefc; --muted: #98a0c4;
+    --hover: #20243d; --line: #262a45; --card: #171a2e; --ok: #4ade9a;
+  }
+
+.sidebar, .sidebar * { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+
+.sidebar {
+    position: fixed; top: 0; left: 0; z-index: 20;
+    width: var(--rail); height: 100%;
+    padding: 6px 12px;
+    background: var(--panel);
+    box-shadow: 5px 0 30px var(--panel-shadow);
+    transition: all .5s ease;
+    overflow: hidden;
+  }
+
+.sidebar.active { width: var(--open); }
+
+.top { position: relative; display: flex; align-items: center; height: 50px; }
+
+.logo {
+    display: flex; align-items: center; height: 50px; width: 100%;
+    margin-left: 5px; color: var(--brand); font-size: 28px;
+    pointer-events: none; opacity: 0; transition: opacity 1.5s ease;
+  }
+
+.sidebar.active .logo { opacity: 1; }
+
+.logo svg { width: 28px; height: 28px; fill: currentColor; flex: none; }
+
+.logo-name { font-size: 22px; font-weight: 600; margin: 0 10px; white-space: nowrap; }
+
+.toggle {
+    position: absolute; top: 50%; left: 50%; translate: -50% -50%;
+    width: 40px; height: 40px; display: grid; place-items: center;
+    border: 0; border-radius: 10px; background: none; color: var(--fg); cursor: pointer;
+    transition: left .5s ease, background .2s;
+  }
+
+.toggle:hover { background: var(--hover); }
+
+.sidebar.active .toggle { left: 90%; }
+
+svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+.search { position: relative; height: 50px; margin: 10px 0 14px; }
+
+.search input {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    padding-left: 50px; border: 0; outline: 0; border-radius: 14px;
+    background: var(--brand); color: var(--brand-fg);
+    font: 500 15px var(--font);
+    box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--brand) 70%, transparent);
+    transition: all .5s ease;
+  }
+
+.search input::placeholder { color: color-mix(in srgb, var(--brand-fg) 65%, transparent); }
+
+.search button {
+    position: absolute; z-index: 1; top: 0; left: 0; width: 100%; height: 50px;
+    display: flex; align-items: center; justify-content: flex-start; padding-left: 7px; transition: padding .5s ease;
+    border: 0; border-radius: 14px; background: none; color: var(--brand-fg); cursor: pointer;
+  }
+
+.search input:focus-visible, .search button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+.sidebar.active .search button { padding-left: 13px; }
+
+.sidebar:not(.active) .search input { padding-left: 0; }
+
+.sidebar:not(.active) .search input::placeholder { color: transparent; }
+
+.sidebar:not(.active) .search button { pointer-events: auto; }
+
+.sidebar.active .search button { width: 50px; pointer-events: none; }
+
+.menu { list-style: none; display: grid; gap: 4px; }
+
+.menu a {
+    position: relative; display: flex; align-items: center; height: 50px;
+    padding-left: 7px; gap: 16px; border-radius: 12px;
+    color: var(--muted); text-decoration: none; font-size: 15px; font-weight: 500; white-space: nowrap;
+    transition: background .2s, color .2s, padding .5s ease;
+  }
+
+.sidebar.active .menu a { padding-left: 13px; }
+
+.menu a:hover { background: var(--hover); color: var(--fg); }
+
+.menu a[aria-current="page"] { background: var(--hover); color: var(--brand); }
+
+.menu a:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+
+.menu .label { opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+
+.sidebar.active .menu .label { opacity: 1; pointer-events: auto; transition-delay: .15s; }
+
+.sidebar:not(.active) .menu a:hover::after, .sidebar:not(.active) .menu a:focus-visible::after {
+    content: attr(data-tip); position: fixed; left: calc(var(--rail) + 8px);
+    padding: 6px 10px; border-radius: 8px; background: var(--brand); color: var(--brand-fg); font-size: 13px; z-index: 30;
+  }
+
+.empty { padding: 12px 14px; font-size: 13px; color: var(--muted); }
+
+.backdrop { position: fixed; inset: 0; z-index: 10; background: rgba(8, 10, 30, .35); opacity: 0; pointer-events: none; transition: opacity .4s; }
+
+.backdrop.on { opacity: 1; pointer-events: auto; }
+
+/* Page content: keep it clear of the closed rail */
+.has-sidebar { padding-left: calc(var(--rail) + 20px); }
+
+@media (max-width: 520px) { :root { --open: min(240px, 80vw); } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

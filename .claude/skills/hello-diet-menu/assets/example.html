@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Responsive sidebar demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="sidebar.css">
+<style>
+  body { margin: 0; min-height: 100vh; background: var(--page); color: var(--fg); font-family: var(--font); }
+  main { padding-block: 32px; padding-right: 16px; }
+  h1 { font-size: 1.6rem; font-weight: 600; margin: 0 0 8px; }
+  p { color: var(--muted); margin: 0; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar" aria-label="Sidebar">
+  <div class="top">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.8 4.5 6.5 4.5c2 0 3.7 1.1 5.5 3.2 1.8-2.1 3.5-3.2 5.5-3.2 3.7 0 5.6 3.9 4.1 7.3C19.5 16.4 12 21 12 21z"/></svg>
+      <span class="logo-name">My App</span>
+    </div>
+    <button type="button" class="toggle" aria-label="Open sidebar" aria-expanded="false" aria-controls="sidebar">
+      <svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h16"/></svg>
+    </button>
+  </div>
+
+  <div class="search" role="search">
+    <button type="button" aria-label="Search the menu"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></button>
+    <input type="search" placeholder="Search..." aria-label="Search the menu" autocomplete="off">
+  </div>
+
+  <nav aria-label="Main">
+    <ul class="menu">
+      <!-- One <li> per page. Keep data-tip: it is the tooltip when closed and the search text. -->
+      <li><a href="#dashboard" data-tip="Dashboard" aria-current="page"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M8 17v-5M12 17V8M16 17v-3"/></svg><span class="label">Dashboard</span></a></li>
+      <li><a href="#reports" data-tip="Reports"><svg class="i" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg><span class="label">Reports</span></a></li>
+      <li><a href="#calendar" data-tip="Calendar"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span class="label">Calendar</span></a></li>
+      <li><a href="#settings" data-tip="Settings"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2.1-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2.1 1.2l-2.3-.9-2 3.400 2 1.500A7 7 0 0 0 5 12c0 .4 0 .8.1 1.200l-2 1.500 2 3.400 2.300-.9a7 7 0 0 0 2.100 1.200L10 21h4l.5-2.600a7 7 0 0 0 2.100-1.200l2.300.9 2-3.400-2-1.500c.1-.4.1-.8.1-1.200z"/></svg><span class="label">Settings</span></a></li>
+    </ul>
+    <p class="empty" hidden>No match.</p>
+  </nav>
+</aside>
+
+<!-- Your page. .has-sidebar keeps it clear of the closed rail. -->
+<main class="has-sidebar">
+  <h1 id="title">Dashboard</h1>
+  <p>Replace this with your content.</p>
+</main>
+
+<script src="sidebar.js"></script>
+<script>
+  initSidebar(document.getElementById('sidebar'), {
+    onNavigate: function (href, e) {
+      e.preventDefault();                       // remove this line to let the links navigate normally
+      document.getElementById('title').textContent = e.currentTarget.dataset.tip;
+    },
+  });
+</script>
+</body>
+</html>
